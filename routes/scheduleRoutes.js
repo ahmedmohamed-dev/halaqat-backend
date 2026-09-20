@@ -10,9 +10,7 @@ const router = express.Router();
 router.post("/", authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== "student") {
-      return res
-        .status(403)
-        .json({ message: "Only students can request schedule changes" });
+      return res.status(403).json({ message: "Only students can request schedule changes" });
     }
     const { halaqaId, requestedDay, requestedTime, reason } = req.body;
 
@@ -24,9 +22,12 @@ router.post("/", authMiddleware, async (req, res) => {
       reason,
     });
 
-    res
-      .status(201)
-      .json({ message: "Request submitted successfully", request });
+    const populatedRequest = await ScheduleRequest.findById(request._id).populate(
+      "student",
+      "name phone",
+    );
+
+    res.status(201).json({ message: "Request submitted successfully", request: populatedRequest });
   } catch (error) {
     console.error("Create schedule request error:", error);
     res.status(500).json({ message: "Something went wrong" });
@@ -50,9 +51,7 @@ router.get("/halaqa/:halaqaId", authMiddleware, async (req, res) => {
 router.post("/:requestId/manage", authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== "sheikh") {
-      return res
-        .status(403)
-        .json({ message: "Only sheikhs can manage requests" });
+      return res.status(403).json({ message: "Only sheikhs can manage requests" });
     }
     const { action } = req.body; // "accept" or "reject"
     const request = await ScheduleRequest.findById(req.params.requestId);
@@ -71,18 +70,19 @@ router.post("/:requestId/manage", authMiddleware, async (req, res) => {
     await Notification.create({
       halaqa: request.halaqa,
       recipient: request.student,
-      title:
-        action === "accept"
-          ? "تم قبول طلب تغيير الموعد"
-          : "تم رفض طلب تغيير الموعد",
-      body:
-        action === "accept"
-          ? `الموعد الجديد: ${request.requestedDay} - ${request.requestedTime}`
-          : "لم تتم الموافقة على الطلب، راجع الشيخ لمزيد من التفاصيل.",
+      title: action === "accept" ? "تم قبول طلب تغيير الموعد" : "تم رفض طلب تغيير الموعد",
+      body: action === "accept"
+        ? `الموعد الجديد: ${request.requestedDay} - ${request.requestedTime}`
+        : "لم تتم الموافقة على الطلب، راجع الشيخ لمزيد من التفاصيل.",
       type: "schedule",
     });
 
-    res.json({ message: "Request updated successfully", request });
+    const populatedRequest = await ScheduleRequest.findById(request._id).populate(
+      "student",
+      "name phone",
+    );
+
+    res.json({ message: "Request updated successfully", request: populatedRequest });
   } catch (error) {
     console.error("Manage schedule request error:", error);
     res.status(500).json({ message: "Something went wrong" });
