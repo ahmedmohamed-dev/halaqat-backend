@@ -51,16 +51,31 @@ router.post("/announce", authMiddleware, async (req, res) => {
       })),
     );
 
-    res
-      .status(201)
-      .json({
-        message: "Announcement sent successfully",
-        count: notifications.length,
-      });
+    res.status(201).json({
+      message: "Announcement sent successfully",
+      count: notifications.length,
+    });
   } catch (error) {
     console.error("Send announcement error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 });
+// حذف إشعار (المستخدم يقدر يحذف بس إشعاراته هو)
+router.delete("/:id", authMiddleware, async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndDelete({
+      _id: req.params.id,
+      recipient: req.user.userId,
+    });
 
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    res.json({ message: "Deleted successfully" });
+  } catch (error) {
+    console.error("Delete notification error:", error);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
 module.exports = router;
